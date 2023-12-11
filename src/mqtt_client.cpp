@@ -1,5 +1,6 @@
 #include <ArduinoJson.h>
 #include <ESPDateTime.h>
+#include <StringSplitter.h>
 #include "mqtt_client.h"
 
 MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer) :
@@ -25,27 +26,64 @@ void MqttClient::loop() {
   if (now - lastMsg > 2000) {
     lastMsg = now;
     ++value;
-    char msg[MSG_BUFFER_SIZE];
-    snprintf(msg, MSG_BUFFER_SIZE, "hello world #%ld", value);
-    Serial.print("Publish message: ");
-    Serial.println(msg);
-    client.publish("tele/pumpt", msg);
+    StaticJsonDocument<200> doc;
+    doc["value"] = value;
+    doc["time"] = DateTime.toISOString();
+    doc["duty_cycle"] = pwmControl->dutyCycle;
+    String status_topic = "tele/" + name + "/status";
+    String output;
+    serializeJson(doc, output);
+    client.publish(status_topic.c_str(), output.c_str());
   }
 }
 
-void MqttClient::callback(char* topic, byte* payload, unsigned int length) {
-  // Implement your callback logic here
+void MqttClient::callback(char* topic_str, byte* payload, unsigned int length) {
+  auto topic = String(topic_str);
+  auto splitter = StringSplitter(topic, '/', 4);
+  auto itemCount = splitter.getItemCount();
+  if (itemCount < 3) {
+    Serial.printf("Item count less than 3 %d '%s'\n", itemCount, topic_str);
+    return;
+  }
+#if 1
+  for (int i = 0; i < itemCount; i++) {
+    String item = splitter.getItemAtIndex(i);
+    Serial.println("Item @ index " + String(i) + ": " + String(item));
+  }
+  Serial.printf("command '%s'\n", splitter.getItemAtIndex(itemCount - 1).c_str());
+#endif
+  
+  if (splitter.getItemAtIndex(0) == "cmnd") {
+    DynamicJsonDocument jpl(1024);
+    auto err = deserializeJson(jpl, payload, length);
+    if (err) {
+      Serial.printf("deserializeJson() failed: '%s'\n", err.c_str());
+      return;
+    }
+    String output;
+    serializeJson(jpl, output);
+    auto dest = splitter.getItemAtIndex(itemCount - 1);
+#if 1
+    if (dest == "duty_cycle") {
+      if (jpl.containsKey("value")) {
+        auto duty_cycle = jpl["value"].as<int>();
+        Serial.printf("Setting duty_cycle to %d\n", duty_cycle);
+        pwmControl->setDutyCycle(duty_cycle);
+      }
+    }
+#endif
+  }
 }
 
 void MqttClient::reconnect() {
   while (!client.connected()) {
     Serial.print("Attempting MQTT connection...");
-    String clientId = "ESP8266Client-";
+    String clientId = "esp32s2client-";
     clientId += String(random(0xffff), HEX);
     if (client.connect(clientId.c_str())) {
-      Serial.println("connected");
-      client.publish("outTopic", "hello world");
-      client.subscribe("inTopic");
+      String cmnd_topic = String("cmnd/") + name + "/#";
+      Serial.printf("connected topic '%s'\n", cmnd_topic.c_str());
+      client.subscribe(cmnd_topic.c_str());
 
       StaticJsonDocument<200> doc;
       doc["version"] = 1;

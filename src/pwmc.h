@@ -10,18 +10,21 @@ public:
     }
  //    PWMControl() = delete;
 
-    void setDutyCycle(float dutyCycle) {
-        if (dutyCycle < 0.0) {
-            dutyCycle = 0.0;
-        } else if (dutyCycle > 100.0) {
-            dutyCycle = 100.0;
+    void setDutyCycle(float newDutyCycle) {
+        if (newDutyCycle < 0.0) {
+            newDutyCycle = 0.0;
+        } else if (newDutyCycle > 100.0) {
+            newDutyCycle = 100.0;
         }
 
-        int dutyValue = int((dutyCycle / 100.0) * 1024);
+        int dutyValue = int((newDutyCycle / 100.0) * 1024);
         ledcWrite(0, dutyValue);
+        dutyCycle = newDutyCycle;
     }
 
 private:
     int pin;
     int frequency;
+public:
+    float dutyCycle = 0.0;
 };

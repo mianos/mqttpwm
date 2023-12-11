@@ -9,7 +9,6 @@
 class MqttClient {
 public:
   MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer="mqtt2.mianos.com");
-//  RadarMqtt(std::unique_ptr<PWMControl> pwmControlPtr, const String& server="mqtt2.mianos.com", int port=1883);
   void loop();
   std::unique_ptr<PWMControl> pwmControl;
 
