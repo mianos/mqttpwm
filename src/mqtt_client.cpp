@@ -1,4 +1,5 @@
-
+#include <ArduinoJson.h>
+#include <ESPDateTime.h>
 #include "mqtt_client.h"
 
 MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer) :
@@ -28,7 +29,7 @@ void MqttClient::loop() {
     snprintf(msg, MSG_BUFFER_SIZE, "hello world #%ld", value);
     Serial.print("Publish message: ");
     Serial.println(msg);
-    client.publish("pumpt/test", msg);
+    client.publish("tele/pumpt", msg);
   }
 }
 
@@ -45,6 +46,16 @@ void MqttClient::reconnect() {
       Serial.println("connected");
       client.publish("outTopic", "hello world");
       client.subscribe("inTopic");
+
+      StaticJsonDocument<200> doc;
+      doc["version"] = 1;
+      doc["time"] = DateTime.toISOString();
+      doc["hostname"] = WiFi.getHostname();
+      doc["ip"] = WiFi.localIP().toString();
+      String status_topic = "tele/" + name + "/init";
+      String output;
+      serializeJson(doc, output);
+      client.publish(status_topic.c_str(), output.c_str());
     } else {
       Serial.print("failed, rc=");
       Serial.print(client.state());

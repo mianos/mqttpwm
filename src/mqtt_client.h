@@ -20,6 +20,7 @@ private:
   const char* mqttServer;
   static const int MSG_BUFFER_SIZE = 50;
   int value;
+  String name = "pumpt";
 
   void callback(char* topic, byte* payload, unsigned int length);
   void reconnect();
