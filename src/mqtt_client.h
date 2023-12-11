@@ -8,7 +8,7 @@
 
 class MqttClient {
 public:
-  MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer="mqtt2.mianos.com");
+  MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer="mqtt2.mianos.com", int port=1883);
   void loop();
   std::unique_ptr<PWMControl> pwmControl;
 
@@ -17,9 +17,10 @@ private:
   PubSubClient client;
   unsigned long lastMsg;
   const char* mqttServer;
-  static const int MSG_BUFFER_SIZE = 50;
   int value;
   String name = "pumpt";
+  int statusFrequencyMs = 10000;
+  int port = 1883;
 
   void callback(char* topic, byte* payload, unsigned int length);
   void reconnect();

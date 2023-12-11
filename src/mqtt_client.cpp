@@ -3,13 +3,14 @@
 #include <StringSplitter.h>
 #include "mqtt_client.h"
 
-MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer) :
+MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer, int port) :
     client(espClient),
     lastMsg(0),
     value(0),
+    port(port),
     pwmControl(std::move(pwmControlPtr)) {
   this->mqttServer = mqttServer;
-  client.setServer(mqttServer, 1883);
+  client.setServer(mqttServer, port);
   client.setCallback([this](char* topic, byte* payload, unsigned int length) {
     callback(topic, payload, length);
   });
@@ -22,8 +23,8 @@ void MqttClient::loop() {
   }
   client.loop();
 
-  unsigned long now = millis();
-  if (now - lastMsg > 2000) {
+  auto now = millis();
+  if (now - lastMsg > statusFrequencyMs) {
     lastMsg = now;
     ++value;
     StaticJsonDocument<200> doc;

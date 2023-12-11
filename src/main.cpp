@@ -1,4 +1,5 @@
 #include <Arduino.h>
+#include <ArduinoOTA.h>
 #include <memory>
 
 #include <ESPDateTime.h>
@@ -28,5 +29,7 @@ void setup() {
 
 void loop() {
   mqttClient->loop();
+  ArduinoOTA.handle();
+  delay(10);
 }
 
