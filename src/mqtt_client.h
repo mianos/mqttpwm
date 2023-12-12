@@ -19,9 +19,10 @@ private:
   const char* mqttServer;
   int value;
   String name = "pumpt";
-  int statusFrequencyMs = 10000;
+  int statusFrequencyMs = 60000;
   int port = 1883;
 
   void callback(char* topic, byte* payload, unsigned int length);
   void reconnect();
+  void PublishStatus();
 };

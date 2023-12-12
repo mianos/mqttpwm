@@ -16,6 +16,16 @@ MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mq
   });
 }
 
+void MqttClient::PublishStatus() {
+    StaticJsonDocument<200> doc;
+    doc["value"] = value++;
+    doc["time"] = DateTime.toISOString();
+    doc["duty_cycle"] = pwmControl->dutyCycle;
+    String status_topic = "tele/" + name + "/status";
+    String output;
+    serializeJson(doc, output);
+    client.publish(status_topic.c_str(), output.c_str());
+}
 
 void MqttClient::loop() {
   if (!client.connected()) {
@@ -26,15 +36,7 @@ void MqttClient::loop() {
   auto now = millis();
   if (now - lastMsg > statusFrequencyMs) {
     lastMsg = now;
-    ++value;
-    StaticJsonDocument<200> doc;
-    doc["value"] = value;
-    doc["time"] = DateTime.toISOString();
-    doc["duty_cycle"] = pwmControl->dutyCycle;
-    String status_topic = "tele/" + name + "/status";
-    String output;
-    serializeJson(doc, output);
-    client.publish(status_topic.c_str(), output.c_str());
+    PublishStatus();
   }
 }
 
@@ -46,7 +48,7 @@ void MqttClient::callback(char* topic_str, byte* payload, unsigned int length) {
     Serial.printf("Item count less than 3 %d '%s'\n", itemCount, topic_str);
     return;
   }
-#if 1
+#if 0
   for (int i = 0; i < itemCount; i++) {
     String item = splitter.getItemAtIndex(i);
     Serial.println("Item @ index " + String(i) + ": " + String(item));
@@ -64,15 +66,14 @@ void MqttClient::callback(char* topic_str, byte* payload, unsigned int length) {
     String output;
     serializeJson(jpl, output);
     auto dest = splitter.getItemAtIndex(itemCount - 1);
-#if 1
     if (dest == "duty_cycle") {
       if (jpl.containsKey("value")) {
         auto duty_cycle = jpl["value"].as<int>();
-        Serial.printf("Setting duty_cycle to %d\n", duty_cycle);
+
         pwmControl->setDutyCycle(duty_cycle);
+        PublishStatus();
       }
     }
-#endif
   }
 }
 
