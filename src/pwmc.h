@@ -20,11 +20,10 @@
 
 class PWMControl {
 public:
-    PWMControl(int pin=16, int frequency=90) {
-        this->pin = pin;
-        this->frequency = frequency;
+    PWMControl(int pin=D0, int frequency=90, bool invert=true) : pin(pin), frequency(frequency), invert(invert) {
         ledcSetup(0, frequency, 10); 
         ledcAttachPin(pin, 0);     // Attach the channel to the specified pin
+        ledcWrite(0, dutyCycle);
     }
  //    PWMControl() = delete;
 
@@ -35,14 +34,19 @@ public:
             newDutyCycle = 100.0;
         }
 
+        if (invert) {
+          newDutyCycle = 100.0 - newDutyCycle;
+        }
         int dutyValue = int((newDutyCycle / 100.0) * 1024);
+//        printf("Write cycle value of %d\n", dutyValue);
         ledcWrite(0, dutyValue);
         dutyCycle = newDutyCycle;
     }
 
 private:
-    int pin;
-    int frequency;
+    int pin=D0;
+    int frequency=90;
 public:
-    float dutyCycle = 0.0;
+    float dutyCycle = 50.0;
+    bool invert=true;
 };

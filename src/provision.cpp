@@ -6,44 +6,42 @@ int prov_on_flag = 0;
 int prov_end = 0;
 int prov_err = 0;
 
+
 void SysProvEvent(arduino_event_t *sys_event)
 {
     switch (sys_event->event_id) {
     case ARDUINO_EVENT_WIFI_STA_GOT_IP:
-        Serial.print("\nConnected IP address : ");
-        Serial.println(IPAddress(sys_event->event_info.got_ip.ip_info.ip.addr));
+        printf("\nConnected IP address : %s\n", IPAddress(sys_event->event_info.got_ip.ip_info.ip.addr).toString().c_str());
         break;
     case ARDUINO_EVENT_WIFI_STA_DISCONNECTED:
-        Serial.println("\nWHAT?  Disconnected. Connecting to the AP again... ");
+        printf("\nWHAT?  Disconnected. Connecting to the AP again...\n");
         break;
     case ARDUINO_EVENT_PROV_START:
-        Serial.println("\nProvisioning started\nGive Credentials of your access point using \" Android app \"");
+        printf("\nProvisioning started\nGive Credentials of your access point using \" Android app \"\n");
         break;
     case ARDUINO_EVENT_PROV_CRED_RECV:
-        Serial.println("\nReceived Wi-Fi credentials");
-        Serial.print("\tSSID : ");
-        Serial.println((const char *) sys_event->event_info.prov_cred_recv.ssid);
-        Serial.print("\tPassword : ");
-        Serial.println((char const *) sys_event->event_info.prov_cred_recv.password);
+        printf("\nReceived Wi-Fi credentials\n");
+        printf("\tSSID : %s\n", (const char *)sys_event->event_info.prov_cred_recv.ssid);
+        printf("\tPassword : %s\n", (const char *)sys_event->event_info.prov_cred_recv.password);
         break;
     case ARDUINO_EVENT_PROV_CRED_FAIL:
-        Serial.println("\nProvisioning failed!\nPlease reset to factory and retry provisioning\n");
+        printf("\nProvisioning failed!\nPlease reset to factory and retry provisioning\n");
         if(sys_event->event_info.prov_fail_reason == WIFI_PROV_STA_AUTH_ERROR)
-            Serial.println("\nWi-Fi AP password incorrect");
+            printf("\nWi-Fi AP password incorrect\n");
         else
-            Serial.println("\nWi-Fi AP not found....Add API \" nvs_flash_erase() \" before beginProvision()");
+            printf("\nWi-Fi AP not found....Add API \" nvs_flash_erase() \" before beginProvision()\n");
         break;
     case ARDUINO_EVENT_PROV_CRED_SUCCESS:
-        Serial.println("\nProvisioning Successful");
+        printf("\nProvisioning Successful\n");
         break;
     case ARDUINO_EVENT_PROV_END:
-        Serial.println("\nProvisioning Ends");
+        printf("\nProvisioning Ends\n");
         break;
     case ARDUINO_EVENT_PROV_INIT:
-        Serial.printf("Prov: Init\n");
+        printf("Prov: Init\n");
         break;
     case ARDUINO_EVENT_PROV_DEINIT:
-        Serial.printf("Prov: Stopped\n");
+        printf("Prov: Stopped\n");
         break;
     case ARDUINO_EVENT_WIFI_SCAN_DONE:
         printf("Prov: scan done\n");
@@ -55,9 +53,14 @@ void SysProvEvent(arduino_event_t *sys_event)
         printf("Station connected\n");
         break;
     default:
-        Serial.printf("Some other event %d\n", sys_event->event_id);
+        printf("Some other event %d\n", sys_event->event_id);
         break;
     }
+}
+
+void        reset_provisioning() {
+    wifi_prov_mgr_reset_provisioning();
+    ESP.restart();
 }
 
 #if defined(BOOT_BUTTON)
@@ -74,7 +77,7 @@ String getMacAddress() {
   return String(macStr);
 }
 
-void wifi_connect() {
+void wifi_connect(const char *pname) {
   WiFi.mode(WIFI_STA);
   WiFi.onEvent(SysProvEvent);
   WiFi.disconnect();  // Disconnect from the WiFi
@@ -85,16 +88,16 @@ void wifi_connect() {
 
   Serial.printf("press and hold prog now to reset .... \n");
   delay(1000);
-  if (digitalRead(PROG_BUTTON_PIN) == LOW) {
+/*  if (digitalRead(PROG_BUTTON_PIN) == LOW) {
     Serial.printf("Reset button low Resetting\n");
-    WiFi.disconnect(false,true);
+    WiFi.disconnect(false,true); 
     delay(500);
     ESP.restart();
-  }
+  } */
   Serial.printf("Begin Provisioning using Soft AP\n");
-  const char * pop = "abcd1234";
+  const char * pop = "abcd1234"; 
   const char * service_name = "PROV_PWM";
-  const char * service_key = NULL;
+  const char * service_key = NULL; 
 
   WiFiProv.beginProvision(WIFI_PROV_SCHEME_SOFTAP, WIFI_PROV_SCHEME_HANDLER_NONE, WIFI_PROV_SECURITY_1, pop, service_name);
   while (WiFi.status() != WL_CONNECTED) {
@@ -104,29 +107,28 @@ void wifi_connect() {
   Serial.printf("Connected\n");
   ArduinoOTA
     .onStart([]() {
-      String type;
+      const char* type;
       if (ArduinoOTA.getCommand() == U_FLASH)
         type = "sketch";
       else // U_SPIFFS
         type = "filesystem";
 
       // NOTE: if updating SPIFFS this would be the place to unmount SPIFFS using SPIFFS.end()
-      Serial.println("Start updating " + type);
+      printf("Start updating %s\n", type);
     })
     .onEnd([]() {
-      Serial.println("\nEnd");
+      printf("\nEnd\n");
     })
     .onProgress([](unsigned int progress, unsigned int total) {
-      Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
+      printf("Progress: %u%%\r", (progress / (total / 100)));
     })
     .onError([](ota_error_t error) {
-      Serial.printf("Error[%u]: ", error);
-      if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-      else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-      else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-      else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-      else if (error == OTA_END_ERROR) Serial.println("End Failed");
+      printf("Error[%u]: ", error);
+      if (error == OTA_AUTH_ERROR) printf("Auth Failed\n");
+      else if (error == OTA_BEGIN_ERROR) printf("Begin Failed\n");
+      else if (error == OTA_CONNECT_ERROR) printf("Connect Failed\n");
+      else if (error == OTA_RECEIVE_ERROR) printf("Receive Failed\n");
+      else if (error == OTA_END_ERROR) printf("End Failed\n");
     });
 
-  ArduinoOTA.begin();
 }

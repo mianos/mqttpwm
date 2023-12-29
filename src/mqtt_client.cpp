@@ -2,6 +2,7 @@
 #include <ESPDateTime.h>
 #include <StringSplitter.h>
 #include "mqtt_client.h"
+#include "provision.h"
 
 MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mqttServer, int port) :
     client(espClient),
@@ -9,18 +10,18 @@ MqttClient::MqttClient(std::unique_ptr<PWMControl> pwmControlPtr, const char* mq
     value(0),
     port(port),
     pwmControl(std::move(pwmControlPtr)) {
-  this->mqttServer = mqttServer;
-  client.setServer(mqttServer, port);
-  client.setCallback([this](char* topic, byte* payload, unsigned int length) {
-    callback(topic, payload, length);
-  });
+      this->mqttServer = mqttServer;
+      client.setServer(mqttServer, port);
+      client.setCallback([this](char* topic, byte* payload, unsigned int length) {
+        callback(topic, payload, length);
+    });
 }
 
 void MqttClient::PublishStatus() {
     StaticJsonDocument<200> doc;
     doc["value"] = value++;
     doc["time"] = DateTime.toISOString();
-    doc["duty_cycle"] = pwmControl->dutyCycle;
+    doc["duty_cycle"] = pwmControl->invert ? 100.0 - pwmControl->dutyCycle : pwmControl->dutyCycle;
     String status_topic = "tele/" + name + "/status";
     String output;
     serializeJson(doc, output);
@@ -66,7 +67,10 @@ void MqttClient::callback(char* topic_str, byte* payload, unsigned int length) {
     String output;
     serializeJson(jpl, output);
     auto dest = splitter.getItemAtIndex(itemCount - 1);
-    if (dest == "duty_cycle") {
+    if (dest == "reprovision") {
+        Serial.printf("clearing provisioning\n");
+        reset_provisioning();
+    } else if (dest == "duty_cycle") {
       if (jpl.containsKey("value")) {
         auto duty_cycle = jpl["value"].as<int>();
 
